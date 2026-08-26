@@ -1,0 +1,29 @@
+[
+  {
+    "id": "loc_01",
+    "name": "District A",
+    "lat": 17.3850,
+    "lon": 78.4867,
+    "elderly_pct": 12.4,
+    "outdoor_worker_pct": 22.0,
+    "population_density": 18200
+  },
+  {
+    "id": "loc_02",
+    "name": "District B",
+    "lat": 17.4400,
+    "lon": 78.3489,
+    "elderly_pct": 9.8,
+    "outdoor_worker_pct": 15.5,
+    "population_density": 9400
+  },
+  {
+    "id": "loc_03",
+    "name": "District C",
+    "lat": 17.3200,
+    "lon": 78.5500,
+    "elderly_pct": 15.1,
+    "outdoor_worker_pct": 28.3,
+    "population_density": 22500
+  }
+]

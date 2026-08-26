@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Climate Stress Analytics Hub (CSAH)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Climate Stress Analytics Hub <span>(CSAH)</span></h1>
+  <p class="tagline">Live thermal stress &amp; mortality risk monitoring</p>
+</header>
+
+<div id="alert-banner" class="alert-banner hidden"></div>
+
+<main class="layout">
+  <section id="map" class="map"></section>
+
+  <aside class="sidebar">
+    <div class="panel">
+      <h2>Selected Location</h2>
+      <div id="location-details">
+        <p class="muted">Click a marker on the map to see details.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Forecast Trend</h2>
+      <canvas id="forecast-chart" height="180"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>Top Risk Zones</h2>
+      <ul id="top-risk-list"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>Demo Mode</h2>
+      <button id="heatwave-toggle" class="sim-button">Simulate Heatwave</button>
+      <p class="muted" style="margin-top:0.5rem;">Boosts heat index +15C to preview Extreme risk zones for demo purposes.</p>
+    </div>
+  </aside>
+</main>
+
+<footer class="statusbar">
+  <span id="data-source-label">Loading data...</span>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script src="js/api.js"></script>
+<script src="js/simulate.js"></script>
+<script src="js/map.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/alerts.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Virtual Environment
+backend/venv/
+backend/ENV/
+backend/env/
+backend/.env
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Python Cache
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
