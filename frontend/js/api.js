@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "";
 const USE_MOCK = false; // set true to force mock data while backend is not ready
 
 async function fetchRiskData() {

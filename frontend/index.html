@@ -6,25 +6,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="css/style.css" />
+<!-- Turf.js for Voronoi polygons -->
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 </head>
 <body>
 
+<!-- Login Overlay -->
+<div id="login-overlay" class="login-overlay">
+  <div class="login-box">
+    <h2>User Login</h2>
+    <p class="muted">Access the Climate Stress Analytics Hub</p>
+    <input type="text" id="login-name" class="sub-input" placeholder="Your Name" />
+    <input type="tel" id="login-phone" class="sub-input" placeholder="+91XXXXXXXXXX" />
+    <div id="login-feedback" class="sub-feedback hidden"></div>
+    <button id="login-btn" class="sub-btn sub-btn-primary" style="margin-top: 10px; width: 100%;">Login</button>
+  </div>
+</div>
+
+<div id="app-content" class="hidden">
+
 <header class="topbar">
-  <h1>Climate Stress Analytics Hub <span>(CSAH)</span></h1>
-  <p class="tagline">Live thermal stress &amp; mortality risk monitoring</p>
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h1>Climate Stress Analytics Hub <span>(CSAH)</span></h1>
+      <p class="tagline">Live thermal stress &amp; mortality risk monitoring</p>
+    </div>
+    <div class="search-container" style="display: flex; gap: 8px;">
+      <input type="search" id="city-search" placeholder="Search a City..." class="sub-input" style="width: 250px; margin-bottom: 0;" />
+      <button id="city-search-btn" class="sub-btn sub-btn-primary" style="width: auto; padding: 0.55rem 1rem;">Search</button>
+    </div>
+  </div>
 </header>
 
 <div id="alert-banner" class="alert-banner hidden"></div>
 
 <main class="layout">
-  <section id="map" class="map"></section>
+  <section class="map-container">
+    <div class="metric-tabs">
+      <button class="metric-tab active" data-metric="composite_score">Composite Score</button>
+      <button class="metric-tab" data-metric="heat_index_c">Heat Index</button>
+      <button class="metric-tab" data-metric="wbgt_c">WBGT</button>
+      <button class="metric-tab" data-metric="utci_c">UTCI</button>
+    </div>
+    <div id="map" class="map"></div>
+    <div id="map-legend" class="map-legend">
+      <div class="legend-scale">
+        <span style="background:#84B59F">Low</span>
+        <span style="background:#F9E795">Moderate</span>
+        <span style="background:#F96167">High</span>
+        <span style="background:#990011; color:white;">Extreme</span>
+      </div>
+    </div>
+  </section>
 
   <aside class="sidebar">
     <div class="panel">
       <h2>Selected Location</h2>
       <div id="location-details">
-        <p class="muted">Click a marker on the map to see details.</p>
+        <p class="muted">Click a marker/zone on the map to see details.</p>
       </div>
+    </div>
+
+    <div class="panel" id="hap-panel" style="display: none;">
+      <h2>Heat Action Plan</h2>
+      <div id="hap-content"></div>
     </div>
 
     <div class="panel">
@@ -33,14 +78,18 @@
     </div>
 
     <div class="panel">
-      <h2>Top Risk Zones</h2>
-      <ul id="top-risk-list"></ul>
+      <h2>5-Day Prediction</h2>
+      <div id="prediction-timeline">
+         <p class="muted">Select a location to see predictions.</p>
+      </div>
     </div>
+
+    <!-- Subscribe Panel Removed & Repurposed to Login -->
 
     <div class="panel">
       <h2>Demo Mode</h2>
       <button id="heatwave-toggle" class="sim-button">Simulate Heatwave</button>
-      <p class="muted" style="margin-top:0.5rem;">Boosts heat index +15C to preview Extreme risk zones for demo purposes.</p>
+      <p class="muted" style="margin-top:0.5rem;">Boosts heat metrics +10C to preview Extreme risk zones.</p>
     </div>
   </aside>
 </main>
@@ -49,14 +98,63 @@
   <span id="data-source-label">Loading data...</span>
 </footer>
 
+<!-- Hackathon Features UI -->
+<div class="fab-container">
+  <button id="report-fab" class="fab" title="Report Issue">📍</button>
+  <button id="chat-fab" class="fab" title="Ask Climate Copilot">💬</button>
+</div>
+
+<div id="chatbot-widget" class="chatbot-widget hidden">
+  <div class="chatbot-header">
+    <h3>Climate Copilot AI</h3>
+    <button id="close-chat" class="icon-btn">✖</button>
+  </div>
+  <div id="chat-messages" class="chatbot-messages">
+    <div class="message ai-message">Hello! Ask me about your health and heat risk today.</div>
+  </div>
+  <div class="chatbot-input">
+    <input type="text" id="chat-input" placeholder="e.g. Is it safe to work outside?" />
+    <button id="send-chat">Send</button>
+  </div>
+</div>
+
+<div id="report-modal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Submit Community Report</h3>
+    <p class="muted">Click on the map to set location, then submit.</p>
+    <input type="text" id="report-latlon" readonly placeholder="Lat, Lon" class="sub-input" style="margin-bottom: 10px;" />
+    <select id="report-type" class="sub-input" style="margin-bottom: 10px;">
+      <option value="water">💧 Free Water Station</option>
+      <option value="cooling">❄️ Cooling Center</option>
+      <option value="danger">⚠️ Heat Danger / Dizzy</option>
+    </select>
+    <input type="text" id="report-message" placeholder="Details..." class="sub-input" style="margin-bottom: 15px;" />
+    <div class="sub-buttons">
+      <button id="submit-report" class="sub-btn sub-btn-primary">Submit</button>
+      <button id="close-report" class="sub-btn sub-btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Include turf for voronoi polygons -->
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script src="js/api.js"></script>
 <script src="js/simulate.js"></script>
+<script src="js/advisory.js"></script>
 <script src="js/map.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/alerts.js"></script>
+<script src="js/subscribe.js"></script>
+<script src="js/chatbot.js"></script>
+<script src="js/map_extensions.js"></script>
+
+</div> <!-- End app-content -->
+
+<script src="js/login.js"></script>
+<script src="js/search.js"></script>
 
 </body>
 </html>

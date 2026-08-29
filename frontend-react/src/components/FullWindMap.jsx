@@ -1,0 +1,306 @@
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, CircleMarker, Tooltip, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { fetchAirQuality, aqiColor } from '../services/weatherApi';
+
+// ── Major Indian cities for AQI overlay ──
+const INDIAN_CITIES = [
+  { name: 'Delhi',       lat: 28.6139, lon: 77.2090 },
+  { name: 'Mumbai',      lat: 19.0760, lon: 72.8777 },
+  { name: 'Bengaluru',   lat: 12.9716, lon: 77.5946 },
+  { name: 'Chennai',     lat: 13.0827, lon: 80.2707 },
+  { name: 'Kolkata',     lat: 22.5726, lon: 88.3639 },
+  { name: 'Hyderabad',   lat: 17.3850, lon: 78.4867 },
+  { name: 'Pune',        lat: 18.5204, lon: 73.8567 },
+  { name: 'Ahmedabad',   lat: 23.0225, lon: 72.5714 },
+  { name: 'Jaipur',      lat: 26.9124, lon: 75.7873 },
+  { name: 'Lucknow',     lat: 26.8467, lon: 80.9462 },
+  { name: 'Bhopal',      lat: 23.2599, lon: 77.4126 },
+  { name: 'Nagpur',      lat: 21.1458, lon: 79.0882 },
+  { name: 'Visakhapatnam', lat: 17.6868, lon: 83.2185 },
+  { name: 'Coimbatore',  lat: 11.0168, lon: 76.9558 },
+  { name: 'Indore',      lat: 22.7196, lon: 75.8577 },
+  { name: 'Patna',       lat: 25.6093, lon: 85.1376 },
+  { name: 'Chandigarh',  lat: 30.7333, lon: 76.7794 },
+  { name: 'Thiruvananthapuram', lat: 8.5241, lon: 76.9366 },
+  { name: 'Guwahati',    lat: 26.1445, lon: 91.7362 },
+  { name: 'Ranchi',      lat: 23.3441, lon: 85.3096 },
+  { name: 'Varanasi',    lat: 25.3176, lon: 83.0064 },
+  { name: 'Vijayawada',  lat: 16.5062, lon: 80.6480 },
+  { name: 'Kochi',       lat: 9.9312,  lon: 76.2673 },
+];
+
+// ── Wind Particle Overlay ──
+function WindOverlay({ windSpeed, windDirection }) {
+  const map = useMap();
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animId;
+
+    const angleRad = (windDirection + 180) * (Math.PI / 180);
+    const speed = Math.max(1, windSpeed / 2);
+
+    const particles = Array.from({ length: 180 }).map(() => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      length: Math.random() * 25 + 8,
+      opacity: Math.random() * 0.5 + 0.1,
+      speedVar: Math.random() * 0.5 + 0.5,
+    }));
+
+    const render = () => {
+      ctx.fillStyle = 'rgba(10, 22, 40, 0.15)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 1.5;
+      ctx.lineCap = 'round';
+
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(100, 200, 255, ${p.opacity})`;
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + Math.cos(angleRad) * p.length, p.y + Math.sin(angleRad) * p.length);
+        ctx.stroke();
+
+        p.x += Math.cos(angleRad) * speed * p.speedVar;
+        p.y += Math.sin(angleRad) * speed * p.speedVar;
+
+        if (p.x < -50) p.x = canvas.width + 50;
+        if (p.x > canvas.width + 50) p.x = -50;
+        if (p.y < -50) p.y = canvas.height + 50;
+        if (p.y > canvas.height + 50) p.y = -50;
+      });
+
+      animId = requestAnimationFrame(render);
+    };
+
+    const handleResize = () => {
+      const size = map.getSize();
+      canvas.width = size.x;
+      canvas.height = size.y;
+    };
+
+    map.on('resize', handleResize);
+    handleResize();
+    render();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      map.off('resize', handleResize);
+    };
+  }, [map, windSpeed, windDirection]);
+
+  return (
+    <canvas ref={canvasRef} className="absolute inset-0 z-[400] pointer-events-none"
+            style={{ mixBlendMode: 'screen' }} />
+  );
+}
+
+// ── Map Helpers ──
+function MapUpdater({ center }) {
+  const map = useMap();
+  useEffect(() => { map.setView(center, map.getZoom()); }, [center, map]);
+  return null;
+}
+
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    const c = map.getContainer();
+    if (c) ro.observe(c);
+    return () => { if (c) ro.unobserve(c); ro.disconnect(); };
+  }, [map]);
+  return null;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+export default function FullWindMap({ location, weather, onClose }) {
+  const [activeLayer, setActiveLayer] = useState('wind'); // 'wind' | 'aqi'
+  const [cityAqi, setCityAqi] = useState([]);
+  const [aqiLoading, setAqiLoading] = useState(false);
+
+  const windSpeed = weather?._raw?.windSpeed ?? 0;
+  const windDir   = weather?._raw?.windDir ?? 0;
+
+  // Fetch AQI for all cities when AQI layer is activated
+  useEffect(() => {
+    if (activeLayer !== 'aqi') return;
+    if (cityAqi.length > 0) return; // already fetched
+
+    setAqiLoading(true);
+    Promise.all(
+      INDIAN_CITIES.map(async (city) => {
+        try {
+          const aqi = await fetchAirQuality(city.lat, city.lon);
+          return { ...city, aqi: aqi.index, label: aqi.label };
+        } catch {
+          return { ...city, aqi: 0, label: 'N/A' };
+        }
+      })
+    ).then(results => {
+      setCityAqi(results);
+      setAqiLoading(false);
+    });
+  }, [activeLayer, cityAqi.length]);
+
+  // Marker icon
+  const markerIcon = L.divIcon({
+    className: 'custom-wind-marker',
+    html: `
+      <div class="relative flex items-center justify-center w-14 h-14 bg-blue-500/20 rounded-full border border-blue-400/50 backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+        <div class="text-center">
+          <div class="text-[10px] font-bold text-white leading-none mb-0.5">WIND</div>
+          <div class="text-[16px] font-semibold text-white leading-none">${windSpeed}</div>
+        </div>
+        <div class="absolute inset-0 rounded-full border border-dashed border-white/40" style="transform: rotate(${windDir}deg)">
+          <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white rounded-full"></div>
+        </div>
+      </div>
+    `,
+    iconSize: [56, 56],
+    iconAnchor: [28, 28],
+  });
+
+  return (
+    <div className="w-full h-full relative bg-[#0a1628] flex flex-col overflow-hidden animate-fade-in rounded-l-3xl shadow-2xl">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-[500] p-4 flex justify-between items-center bg-gradient-to-b from-[#0a1628]/80 to-transparent">
+        <h2 className="text-white font-medium text-lg flex items-center gap-2">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+          </svg>
+          {activeLayer === 'wind' ? 'Wind Speed' : 'Air Quality'} Map
+        </h2>
+        <button onClick={onClose}
+          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white backdrop-blur-md transition-colors">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Layer Switcher (top-left below header) */}
+      <div className="absolute top-16 left-4 z-[500] flex gap-2">
+        <button
+          onClick={() => setActiveLayer('wind')}
+          className={`px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-md border transition-all
+            ${activeLayer === 'wind'
+              ? 'bg-white/20 border-white/30 text-white'
+              : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}
+        >
+          💨 Wind Speed
+        </button>
+        <button
+          onClick={() => setActiveLayer('aqi')}
+          className={`px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-md border transition-all
+            ${activeLayer === 'aqi'
+              ? 'bg-white/20 border-white/30 text-white'
+              : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}
+        >
+          🌿 Air Quality
+        </button>
+      </div>
+
+      {/* Map */}
+      <div className="flex-1 relative">
+        <MapContainer center={[location.lat, location.lon]} zoom={5} scrollWheelZoom={true}
+          className="w-full h-full bg-[#0a1628]" zoomControl={false}>
+          <MapResizer />
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+            attribution="Tiles &copy; Esri"
+          />
+          <MapUpdater center={[location.lat, location.lon]} />
+          <Marker position={[location.lat, location.lon]} icon={markerIcon} />
+
+          {/* Wind particles layer */}
+          {activeLayer === 'wind' && (
+            <WindOverlay windSpeed={windSpeed} windDirection={windDir} />
+          )}
+
+          {/* AQI colored circles layer */}
+          {activeLayer === 'aqi' && cityAqi.map((city) => (
+            <CircleMarker
+              key={city.name}
+              center={[city.lat, city.lon]}
+              radius={18}
+              pathOptions={{
+                fillColor: aqiColor(city.aqi),
+                fillOpacity: 0.65,
+                color: aqiColor(city.aqi),
+                weight: 2,
+                opacity: 0.9,
+              }}
+            >
+              <Tooltip direction="top" permanent className="aqi-tooltip">
+                <span className="text-[11px] font-bold">{city.aqi}</span>
+              </Tooltip>
+            </CircleMarker>
+          ))}
+        </MapContainer>
+
+        {/* Legend */}
+        {activeLayer === 'wind' ? (
+          <div className="absolute left-6 top-1/2 -translate-y-1/2 z-[500] bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10 flex flex-col items-center">
+            <span className="text-[10px] text-white/70 font-semibold mb-2">km/h</span>
+            <div className="h-48 w-3 rounded-full bg-gradient-to-t from-blue-500 via-green-400 to-red-500 relative">
+              <span className="absolute -right-8 top-0 text-[10px] text-white">120</span>
+              <span className="absolute -right-6 top-1/4 text-[10px] text-white">80</span>
+              <span className="absolute -right-6 top-1/2 text-[10px] text-white">40</span>
+              <span className="absolute -right-4 bottom-0 text-[10px] text-white">0</span>
+            </div>
+          </div>
+        ) : (
+          <div className="absolute left-6 top-1/2 -translate-y-1/2 z-[500] bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10">
+            <span className="text-[10px] text-white/70 font-semibold mb-2 block">AQI</span>
+            {[
+              { color: '#00e400', label: 'Good (0-50)' },
+              { color: '#ffff00', label: 'Moderate (51-100)' },
+              { color: '#ff7e00', label: 'Unhealthy S. (101-150)' },
+              { color: '#ff0000', label: 'Unhealthy (151-200)' },
+              { color: '#8f3f97', label: 'Very Unhealthy (201+)' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-2 mt-1.5">
+                <div className="w-3 h-3 rounded-full" style={{ background: item.color }} />
+                <span className="text-[9px] text-white/70">{item.label}</span>
+              </div>
+            ))}
+            {aqiLoading && <p className="text-[9px] text-white/40 mt-2 animate-pulse">Loading data...</p>}
+          </div>
+        )}
+
+        {/* Bottom Timeline */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[500] w-2/3 max-w-xl bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+          <div className="flex items-center gap-4">
+            <button className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30">
+              <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <div className="flex-1">
+              <div className="flex justify-between text-[10px] text-white/70 mb-2 font-medium">
+                <span>9 AM</span><span>Now</span><span>1 PM</span><span>3 PM</span><span>5 PM</span><span>7 PM</span><span>9 PM</span>
+              </div>
+              <div className="h-1.5 w-full bg-white/20 rounded-full relative">
+                <div className="absolute left-0 top-0 h-full w-[25%] bg-white rounded-full" />
+                <div className="absolute left-[25%] top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg border border-gray-200" />
+              </div>
+            </div>
+          </div>
+          <div className="text-center mt-3 text-xs text-white/80 font-medium">
+            {activeLayer === 'wind' ? 'Wind Speed' : 'Air Quality'} • Real-time Live Data
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

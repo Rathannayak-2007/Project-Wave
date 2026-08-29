@@ -1,0 +1,260 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-sky-deep text-white font-sans antialiased;
+    overflow: hidden;
+  }
+  * {
+    @apply box-border;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.25);
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  }
+
+  .glass-card-active {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 0 1px rgba(76, 201, 240, 0.3), 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-sidebar {
+    background: rgba(13, 27, 42, 0.75);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-modal-backdrop {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .glass-modal {
+    background: rgba(27, 38, 59, 0.92);
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+  }
+
+  .gradient-bar {
+    background: linear-gradient(90deg, #4CC9F0, #7209B7, #F72585);
+    border-radius: 999px;
+    height: 4px;
+  }
+
+  .aqi-gradient {
+    background: linear-gradient(90deg, #4CC9F0 0%, #06D6A0 20%, #FFD166 40%, #EF476F 60%, #7209B7 80%, #F72585 100%);
+    border-radius: 999px;
+    height: 4px;
+  }
+
+  .temp-number {
+    font-size: 96px;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -4px;
+  }
+
+  .metric-label {
+    @apply text-xs font-semibold uppercase tracking-wider;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .metric-value {
+    @apply text-2xl font-light;
+  }
+}
+
+/* Cloud animations */
+.cloud {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.cloud-1 {
+  width: 500px;
+  height: 200px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.15), transparent);
+  top: 8%;
+  animation: cloudDrift 80s linear infinite;
+}
+
+.cloud-2 {
+  width: 700px;
+  height: 250px;
+  background: radial-gradient(ellipse, rgba(90,132,179,0.2), transparent);
+  top: 15%;
+  animation: cloudDrift 120s linear infinite;
+  animation-delay: -40s;
+}
+
+.cloud-3 {
+  width: 400px;
+  height: 150px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.1), transparent);
+  top: 5%;
+  animation: cloudDriftReverse 100s linear infinite;
+  animation-delay: -20s;
+}
+
+.cloud-4 {
+  width: 600px;
+  height: 180px;
+  background: radial-gradient(ellipse, rgba(90,132,179,0.15), transparent);
+  top: 25%;
+  animation: cloudDrift 140s linear infinite;
+  animation-delay: -60s;
+}
+
+@keyframes cloudDrift {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100vw); }
+}
+
+@keyframes cloudDriftReverse {
+  0% { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Ambient glow */
+.ambient-glow {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(90,132,179,0.3), transparent 70%);
+  top: -10%;
+  right: 20%;
+  filter: blur(80px);
+  animation: pulseGlow 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.ambient-glow-2 {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(76,201,240,0.15), transparent 70%);
+  bottom: 10%;
+  left: 10%;
+  filter: blur(60px);
+  animation: pulseGlow 8s ease-in-out infinite;
+  animation-delay: -3s;
+  pointer-events: none;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+/* Hourly forecast scroll */
+.hourly-scroll {
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;
+}
+.hourly-scroll::-webkit-scrollbar { height: 0; }
+
+/* Wind animation lines */
+@keyframes windFlow {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.wind-line {
+  stroke-dasharray: 20 30;
+  animation: windFlow 3s linear infinite;
+}
+
+/* Moon glow */
+.moon-glow {
+  box-shadow: 0 0 40px rgba(255, 248, 220, 0.3), 0 0 80px rgba(255, 248, 220, 0.15);
+}
+
+/* Gauge animations */
+@keyframes gaugeRotate {
+  0% { transform: rotate(-135deg); }
+}
+
+/* Modal slide animation */
+.modal-enter {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(40px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* AQI map tooltip */
+.aqi-tooltip {
+  background: rgba(0, 0, 0, 0.7) !important;
+  border: none !important;
+  border-radius: 6px !important;
+  color: white !important;
+  padding: 2px 6px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+.aqi-tooltip::before {
+  border-top-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Leaflet overrides for dark theme */
+.leaflet-container {
+  background: #0a1628 !important;
+}
+.leaflet-control-attribution {
+  background: rgba(10, 22, 40, 0.7) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Fade in animation */
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}

@@ -5,11 +5,14 @@ from flask import Blueprint, jsonify
 
 from services.risk_engine import compute_location_risk
 from services import cache
+from services.sms_service import build_alert_message, send_alert_sms
+from services.subscriber_service import get_subscribers_for_location
 
 risk_bp = Blueprint("risk", __name__)
 
 LOCATIONS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "locations.json")
 ALERT_THRESHOLD = int(os.environ.get("RISK_ALERT_THRESHOLD", 70))
+SMS_THRESHOLD = int(os.environ.get("SMS_ALERT_THRESHOLD", 80))
 CACHE_TTL = int(os.environ.get("CACHE_TTL_SECONDS", 600))
 
 
@@ -38,14 +41,34 @@ def _get_all_risk_data():
 def _build_alerts(locations_data):
     alerts = []
     for loc in locations_data:
-        if loc["risk"]["score"] >= ALERT_THRESHOLD:
+        hap_tier = loc.get("heat_action_plan", {}).get("tier", "GREEN")
+        is_high_risk = hap_tier in ["ORANGE", "RED"]
+
+        if is_high_risk or loc["risk"]["score"] >= ALERT_THRESHOLD:
+            message = (f"{hap_tier} heat risk - {loc['risk']['mortality_risk']}")
             alerts.append({
                 "location_id": loc["id"],
-                "message": f"{loc['risk']['category']} heat risk in {loc['name']} - "
-                           f"vulnerable groups should avoid outdoor exposure during peak hours",
+                "message": message,
                 "issued_at": datetime.now(timezone.utc).isoformat(),
-                "severity": loc["risk"]["category"],
+                "severity": hap_tier,
             })
+
+            # Send rich SMS when tier is ORANGE or RED
+            if is_high_risk:
+                rich_message = build_alert_message(loc)
+
+                # Gather subscribers for this location
+                subscribers = get_subscribers_for_location(loc["id"])
+                subscriber_phones = [s["phone"] for s in subscribers]
+
+                # send_alert_sms handles fallback to .env numbers if no subscribers
+                send_alert_sms(
+                    location_name=loc["name"],
+                    message=rich_message,
+                    severity=hap_tier,
+                    recipients=subscriber_phones if subscriber_phones else None,
+                )
+
     return alerts
 
 
