@@ -1,20 +1,24 @@
 export default function SkyBackground() {
   return (
-    <div className="fixed inset-0 z-0 overflow-hidden"
-         style={{ background: 'linear-gradient(180deg, #0D1B2A 0%, #1B263B 30%, #1D395E 60%, #415A77 100%)' }}>
-      {/* Ambient glow spots */}
-      <div className="ambient-glow" />
-      <div className="ambient-glow-2" />
+    <div className="fixed inset-0 z-0 overflow-hidden bg-[#0D1B2A]">
+      {/* Video Background */}
+      <video 
+        autoPlay 
+        loop 
+        muted 
+        playsInline 
+        className="absolute inset-0 w-full h-full object-cover opacity-80 mix-blend-screen"
+      >
+        <source src="/assets/sky_background.mp4" type="video/mp4" />
+      </video>
 
-      {/* Volumetric cloud layers */}
-      <div className="cloud cloud-1" />
-      <div className="cloud cloud-2" />
-      <div className="cloud cloud-3" />
-      <div className="cloud cloud-4" />
+      {/* Ambient glow spots overlay */}
+      <div className="ambient-glow opacity-50" />
+      <div className="ambient-glow-2 opacity-50" />
 
       {/* Horizon light */}
       <div className="absolute bottom-0 left-0 right-0 h-[30%] pointer-events-none"
-           style={{ background: 'linear-gradient(180deg, transparent, rgba(90,132,179,0.08))' }} />
+           style={{ background: 'linear-gradient(180deg, transparent, rgba(90,132,179,0.2))' }} />
     </div>
   );
 }
