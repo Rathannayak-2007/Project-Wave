@@ -1,8 +1,18 @@
+import { useEffect, useRef } from 'react';
+
 export default function SkyBackground() {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = 0.5;
+    }
+  }, []);
   return (
     <div className="fixed inset-0 z-0 overflow-hidden bg-[#0D1B2A]">
       {/* Video Background */}
       <video 
+        ref={videoRef}
         autoPlay 
         loop 
         muted 
