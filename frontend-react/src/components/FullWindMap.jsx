@@ -44,9 +44,9 @@ function WindOverlay({ windSpeed }) {
 
     // Fixed West→East direction (0 radians = moving right)
     const angleRad = 0;
-    const speed = Math.max(1, windSpeed / 2);
+    const speed = Math.max(0.3, windSpeed / 8); // Slow, gentle movement
 
-    const particles = Array.from({ length: 180 }).map(() => ({
+    const particles = Array.from({ length: 400 }).map(() => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       length: Math.random() * 25 + 8,
@@ -64,13 +64,13 @@ function WindOverlay({ windSpeed }) {
         ctx.beginPath();
         ctx.strokeStyle = `rgba(100, 200, 255, ${p.opacity})`;
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + p.length, p.y);
+        ctx.lineTo(p.x + p.length, p.y + Math.sin(p.y * 0.01) * 2);
         ctx.stroke();
 
-        // Move right (West to East)
+        // Move right (West to East) — slow and smooth
         p.x += speed * p.speedVar;
-        // Slight natural vertical drift
-        p.y += (Math.random() - 0.5) * 0.4;
+        // Gentle wave-like vertical drift
+        p.y += Math.sin(p.x * 0.005) * 0.15;
 
         // Wrap around
         if (p.x > canvas.width + 50) p.x = -50;
@@ -133,9 +133,8 @@ export default function FullWindMap({ location, weather, onClose }) {
 
   const windSpeed = weather?._raw?.windSpeed ?? 0;
 
-  // Fetch AQI for all cities when AQI layer is activated
+  // Fetch AQI for all cities immediately on mount
   useEffect(() => {
-    if (activeLayer !== 'aqi') return;
     if (cityAqi.length > 0) return; // already fetched
 
     setAqiLoading(true);
@@ -152,7 +151,7 @@ export default function FullWindMap({ location, weather, onClose }) {
       setCityAqi(results);
       setAqiLoading(false);
     });
-  }, [activeLayer, cityAqi.length]);
+  }, [cityAqi.length]);
 
   // Marker icon
   const markerIcon = L.divIcon({
@@ -214,14 +213,13 @@ export default function FullWindMap({ location, weather, onClose }) {
 
       {/* Map */}
       <div className="flex-1 relative">
-        <MapContainer center={[location.lat, location.lon]} zoom={5} scrollWheelZoom={true}
-          className="w-full h-full bg-[#0a1628]" zoomControl={false}>
+        <MapContainer center={[22.5, 79.0]} zoom={4.5} scrollWheelZoom={true}
+          className="w-full h-full bg-[#0a1628]" zoomControl={false} minZoom={4} maxZoom={8}>
           <MapResizer />
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
             attribution="Tiles &copy; Esri"
           />
-          <MapUpdater center={[location.lat, location.lon]} />
           <Marker position={[location.lat, location.lon]} icon={markerIcon} />
 
           {/* Wind particles layer — always West to East */}
