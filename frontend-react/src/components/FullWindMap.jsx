@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -31,8 +31,8 @@ const INDIAN_CITIES = [
   { name: 'Kochi',       lat: 9.9312,  lon: 76.2673 },
 ];
 
-// ── Wind Particle Overlay ──
-function WindOverlay({ windSpeed, windDirection }) {
+// ── Wind Particle Overlay — Always West to East ──
+function WindOverlay({ windSpeed }) {
   const map = useMap();
   const canvasRef = useRef(null);
 
@@ -42,7 +42,8 @@ function WindOverlay({ windSpeed, windDirection }) {
     const ctx = canvas.getContext('2d');
     let animId;
 
-    const angleRad = (windDirection + 180) * (Math.PI / 180);
+    // Fixed West→East direction (0 radians = moving right)
+    const angleRad = 0;
     const speed = Math.max(1, windSpeed / 2);
 
     const particles = Array.from({ length: 180 }).map(() => ({
@@ -63,13 +64,15 @@ function WindOverlay({ windSpeed, windDirection }) {
         ctx.beginPath();
         ctx.strokeStyle = `rgba(100, 200, 255, ${p.opacity})`;
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + Math.cos(angleRad) * p.length, p.y + Math.sin(angleRad) * p.length);
+        ctx.lineTo(p.x + p.length, p.y);
         ctx.stroke();
 
-        p.x += Math.cos(angleRad) * speed * p.speedVar;
-        p.y += Math.sin(angleRad) * speed * p.speedVar;
+        // Move right (West to East)
+        p.x += speed * p.speedVar;
+        // Slight natural vertical drift
+        p.y += (Math.random() - 0.5) * 0.4;
 
-        if (p.x < -50) p.x = canvas.width + 50;
+        // Wrap around
         if (p.x > canvas.width + 50) p.x = -50;
         if (p.y < -50) p.y = canvas.height + 50;
         if (p.y > canvas.height + 50) p.y = -50;
@@ -92,7 +95,7 @@ function WindOverlay({ windSpeed, windDirection }) {
       cancelAnimationFrame(animId);
       map.off('resize', handleResize);
     };
-  }, [map, windSpeed, windDirection]);
+  }, [map, windSpeed]);
 
   return (
     <canvas ref={canvasRef} className="absolute inset-0 z-[400] pointer-events-none"
@@ -120,7 +123,7 @@ function MapResizer() {
 
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  MAIN COMPONENT
+//  MAIN COMPONENT — Half-screen expanded India map
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function FullWindMap({ location, weather, onClose }) {
@@ -129,7 +132,6 @@ export default function FullWindMap({ location, weather, onClose }) {
   const [aqiLoading, setAqiLoading] = useState(false);
 
   const windSpeed = weather?._raw?.windSpeed ?? 0;
-  const windDir   = weather?._raw?.windDir ?? 0;
 
   // Fetch AQI for all cities when AQI layer is activated
   useEffect(() => {
@@ -161,7 +163,7 @@ export default function FullWindMap({ location, weather, onClose }) {
           <div class="text-[10px] font-bold text-white leading-none mb-0.5">WIND</div>
           <div class="text-[16px] font-semibold text-white leading-none">${windSpeed}</div>
         </div>
-        <div class="absolute inset-0 rounded-full border border-dashed border-white/40" style="transform: rotate(${windDir}deg)">
+        <div class="absolute inset-0 rounded-full border border-dashed border-white/40" style="transform: rotate(270deg)">
           <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white rounded-full"></div>
         </div>
       </div>
@@ -222,27 +224,27 @@ export default function FullWindMap({ location, weather, onClose }) {
           <MapUpdater center={[location.lat, location.lon]} />
           <Marker position={[location.lat, location.lon]} icon={markerIcon} />
 
-          {/* Wind particles layer */}
+          {/* Wind particles layer — always West to East */}
           {activeLayer === 'wind' && (
-            <WindOverlay windSpeed={windSpeed} windDirection={windDir} />
+            <WindOverlay windSpeed={windSpeed} />
           )}
 
-          {/* AQI colored circles layer */}
+          {/* AQI colored region circles — large radius to color regions */}
           {activeLayer === 'aqi' && cityAqi.map((city) => (
             <CircleMarker
               key={city.name}
               center={[city.lat, city.lon]}
-              radius={18}
+              radius={35}
               pathOptions={{
                 fillColor: aqiColor(city.aqi),
-                fillOpacity: 0.65,
+                fillOpacity: 0.5,
                 color: aqiColor(city.aqi),
                 weight: 2,
-                opacity: 0.9,
+                opacity: 0.7,
               }}
             >
               <Tooltip direction="top" permanent className="aqi-tooltip">
-                <span className="text-[11px] font-bold">{city.aqi}</span>
+                <span className="text-[11px] font-bold">{city.name}: {city.aqi}</span>
               </Tooltip>
             </CircleMarker>
           ))}
@@ -258,6 +260,7 @@ export default function FullWindMap({ location, weather, onClose }) {
               <span className="absolute -right-6 top-1/2 text-[10px] text-white">40</span>
               <span className="absolute -right-4 bottom-0 text-[10px] text-white">0</span>
             </div>
+            <p className="text-[9px] text-white/50 mt-3 text-center">W → E</p>
           </div>
         ) : (
           <div className="absolute left-6 top-1/2 -translate-y-1/2 z-[500] bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10">
@@ -278,26 +281,10 @@ export default function FullWindMap({ location, weather, onClose }) {
           </div>
         )}
 
-        {/* Bottom Timeline */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[500] w-2/3 max-w-xl bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-          <div className="flex items-center gap-4">
-            <button className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30">
-              <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </button>
-            <div className="flex-1">
-              <div className="flex justify-between text-[10px] text-white/70 mb-2 font-medium">
-                <span>9 AM</span><span>Now</span><span>1 PM</span><span>3 PM</span><span>5 PM</span><span>7 PM</span><span>9 PM</span>
-              </div>
-              <div className="h-1.5 w-full bg-white/20 rounded-full relative">
-                <div className="absolute left-0 top-0 h-full w-[25%] bg-white rounded-full" />
-                <div className="absolute left-[25%] top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg border border-gray-200" />
-              </div>
-            </div>
-          </div>
-          <div className="text-center mt-3 text-xs text-white/80 font-medium">
-            {activeLayer === 'wind' ? 'Wind Speed' : 'Air Quality'} • Real-time Live Data
+        {/* Bottom Info Bar */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-white/10 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/10">
+          <div className="text-center text-sm text-white/80 font-medium">
+            {activeLayer === 'wind' ? `Wind: ${windSpeed} km/h • Direction: West → East` : 'Air Quality Index'} • Real-time Live Data
           </div>
         </div>
       </div>

@@ -39,8 +39,8 @@ const INDIAN_CITIES = [
   { name: 'Thiruvananthapuram', lat: 8.5241, lon: 76.9366 },
 ];
 
-// Wind overlay using canvas
-function WindCanvas({ windSpeed, windDirection }) {
+// Wind overlay — always blows West to East (like macOS Weather app)
+function WindCanvas({ windSpeed }) {
   const map = useMap();
   const canvasRef = useRef(null);
 
@@ -50,8 +50,9 @@ function WindCanvas({ windSpeed, windDirection }) {
     const ctx = canvas.getContext('2d');
     let animId;
 
-    const angleRad = (windDirection + 180) * (Math.PI / 180);
-    const speed = Math.max(0.5, windSpeed / 3);
+    // 270° = West to East direction (wind blows FROM the west)
+    const angleRad = 0; // 0 radians = moving to the right (east)
+    const speed = Math.max(0.8, windSpeed / 3);
 
     const particles = Array.from({ length: 100 }).map(() => ({
       x: Math.random() * canvas.width,
@@ -74,10 +75,12 @@ function WindCanvas({ windSpeed, windDirection }) {
         ctx.lineTo(p.x + Math.cos(angleRad) * p.len, p.y + Math.sin(angleRad) * p.len);
         ctx.stroke();
 
-        p.x += Math.cos(angleRad) * speed * p.sv;
-        p.y += Math.sin(angleRad) * speed * p.sv;
+        // Always move right (west to east)
+        p.x += speed * p.sv;
+        // Slight vertical drift for natural feel
+        p.y += (Math.random() - 0.5) * 0.3;
 
-        if (p.x < -30) p.x = canvas.width + 30;
+        // Wrap around
         if (p.x > canvas.width + 30) p.x = -30;
         if (p.y < -30) p.y = canvas.height + 30;
         if (p.y > canvas.height + 30) p.y = -30;
@@ -97,7 +100,7 @@ function WindCanvas({ windSpeed, windDirection }) {
     render();
 
     return () => { cancelAnimationFrame(animId); map.off('resize', resize); };
-  }, [map, windSpeed, windDirection]);
+  }, [map, windSpeed]);
 
   return <canvas ref={canvasRef} className="absolute inset-0 z-[400] pointer-events-none" style={{ mixBlendMode: 'screen' }} />;
 }
@@ -132,7 +135,6 @@ export default function IndiaMapCard({ wind, airQuality, onClick }) {
   const [cityAqi, setCityAqi] = useState([]);
 
   const windSpeed = wind?.speed ?? 0;
-  const windDir   = wind?.directionDeg ?? 0;
 
   // Fetch AQI for all cities when AQI layer is activated
   useEffect(() => {
@@ -197,23 +199,23 @@ export default function IndiaMapCard({ wind, airQuality, onClick }) {
             url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
           />
 
-          {/* Wind particles */}
+          {/* Wind particles — always West to East */}
           {activeLayer === 'wind' && (
-            <WindCanvas windSpeed={windSpeed} windDirection={windDir} />
+            <WindCanvas windSpeed={windSpeed} />
           )}
 
-          {/* AQI circles */}
+          {/* AQI colored region circles — large radius to fill regions */}
           {activeLayer === 'aqi' && cityAqi.map(city => (
             <CircleMarker
               key={city.name}
               center={[city.lat, city.lon]}
-              radius={10}
+              radius={22}
               pathOptions={{
                 fillColor: aqiColor(city.aqi),
-                fillOpacity: 0.7,
+                fillOpacity: 0.55,
                 color: aqiColor(city.aqi),
-                weight: 1.5,
-                opacity: 0.9,
+                weight: 1,
+                opacity: 0.7,
               }}
             >
               <Tooltip direction="top" permanent className="aqi-tooltip">
@@ -228,7 +230,7 @@ export default function IndiaMapCard({ wind, airQuality, onClick }) {
           <div className="absolute top-3 right-3 z-[500] bg-white/10 backdrop-blur-md rounded-lg px-3 py-1.5 border border-white/15">
             <p className="text-[10px] text-white/50 font-semibold">WIND</p>
             <p className="text-lg font-semibold text-white leading-tight">{windSpeed} <span className="text-[10px] text-white/50">km/h</span></p>
-            <p className="text-[10px] text-white/40">{wind?.direction ?? 'N'}</p>
+            <p className="text-[10px] text-white/40">W → E</p>
           </div>
         )}
 

@@ -5,6 +5,7 @@ import SkyBackground from './components/SkyBackground';
 import Sidebar from './components/Sidebar/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
 import MetricGrid from './components/MetricCards/MetricGrid';
+import FullWindMap from './components/FullWindMap';
 
 // Modals
 import HumidityModal from './components/Modals/HumidityModal';
@@ -26,6 +27,16 @@ export default function App() {
   } = useWeatherData();
 
   const [activeModal, setActiveModal] = useState(null);
+  const [showWindMap, setShowWindMap] = useState(false);
+
+  // Handle modal open — special case for 'wind' to open the half-screen map
+  const handleOpenModal = (modalName) => {
+    if (modalName === 'wind') {
+      setShowWindMap(true);
+    } else {
+      setActiveModal(modalName);
+    }
+  };
 
   if (loading || !weather) {
     return (
@@ -72,9 +83,29 @@ export default function App() {
         {/* Right: Metric Grid (always visible, India map is embedded inside) */}
         <MetricGrid 
           weather={weather} 
-          onOpenModal={setActiveModal} 
+          onOpenModal={handleOpenModal} 
         />
       </div>
+
+      {/* Half-screen India Map Panel */}
+      {showWindMap && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Left backdrop — click to close */}
+          <div 
+            className="w-1/2 bg-black/40 backdrop-blur-sm cursor-pointer"
+            onClick={() => setShowWindMap(false)} 
+            style={{ animation: 'fadeIn 0.2s ease-out' }}
+          />
+          {/* Right half — expanded map */}
+          <div className="w-1/2 h-full" style={{ animation: 'slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+            <FullWindMap 
+              location={selectedLocation} 
+              weather={weather} 
+              onClose={() => setShowWindMap(false)} 
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <HumidityModal 
