@@ -7,13 +7,13 @@ export default function ModalSheet({ isOpen, onClose, title, icon, dates, childr
     <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center sm:p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 glass-modal-backdrop cursor-pointer" 
+        className="absolute inset-0 bg-black/40 backdrop-blur-md cursor-pointer" 
         onClick={onClose}
         style={{ animation: 'fadeIn 0.2s ease-out' }}
       />
 
-      {/* Sheet Content */}
-      <div className="relative w-full max-w-[400px] h-[85vh] sm:h-[700px] glass-modal modal-enter flex flex-col overflow-hidden">
+      {/* Sheet Content - Liquid Glass Effect */}
+      <div className="relative w-full max-w-[400px] h-[85vh] sm:h-[700px] bg-white/10 backdrop-blur-2xl saturate-[150%] border border-white/20 shadow-2xl rounded-[24px] modal-enter flex flex-col overflow-hidden">
         
         {/* Header (Top Drag Handle area) */}
         <div className="w-full flex justify-center pt-3 pb-1 cursor-grab">
