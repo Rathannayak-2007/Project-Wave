@@ -11,6 +11,7 @@ from routes.admin_routes import admin_bp
 from routes.ai_routes import ai_bp
 from routes.community_routes import community_bp
 from routes.search_routes import search_bp
+from routes.notification_routes import notification_bp
 
 # Connect frontend by serving it as static files from the backend
 frontend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend')
@@ -22,6 +23,7 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(community_bp)
 app.register_blueprint(search_bp)
+app.register_blueprint(notification_bp)
 
 
 @app.route("/")
@@ -33,13 +35,21 @@ def index():
 #  Background scheduler: check risk data and send SMS alerts automatically
 # ---------------------------------------------------------------------------
 def _scheduled_alert_check():
-    """Runs inside app context to check all locations and send SMS alerts."""
+    """Runs inside app context to check all locations, send SMS alerts, and generate admin reports."""
     with app.app_context():
         from routes.risk_routes import _get_all_risk_data, _build_alerts
+        from services.admin_report_service import check_all_locations_for_admin_reports
+
         print("[Scheduler] Running automatic alert check...")
         locations_data = _get_all_risk_data()
+
+        # Existing: public SMS alerts
         alerts = _build_alerts(locations_data)
-        print(f"[Scheduler] Found {len(alerts)} alert(s)")
+        print(f"[Scheduler] Found {len(alerts)} public alert(s)")
+
+        # New: admin weather change reports
+        admin_reports = check_all_locations_for_admin_reports(locations_data)
+        print(f"[Scheduler] Generated {len(admin_reports)} admin report(s)")
 
 
 def _start_scheduler():

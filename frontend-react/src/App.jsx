@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useWeatherData } from './hooks/useWeatherData';
+import { useHeatAlerts } from './hooks/useHeatAlerts';
 
 import SkyBackground from './components/SkyBackground';
 import Sidebar from './components/Sidebar/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
 import MetricGrid from './components/MetricCards/MetricGrid';
 import FullWindMap from './components/FullWindMap';
+import HeatAlertBanner from './components/HeatAlertBanner';
 
 // Modals
 import HumidityModal from './components/Modals/HumidityModal';
@@ -29,6 +31,12 @@ export default function App() {
   const [activeModal, setActiveModal] = useState(null);
   const [showWindMap, setShowWindMap] = useState(false);
 
+  // ── Heat alert system ──
+  const { alertActive, severity, message, temp, dismiss } = useHeatAlerts(
+    weather,
+    selectedLocation?.name || 'your area'
+  );
+
   // Handle modal open — special case for 'wind' to open the half-screen map
   const handleOpenModal = (modalName) => {
     if (modalName === 'wind') {
@@ -49,6 +57,15 @@ export default function App() {
 
   return (
     <div className="h-screen w-full relative flex">
+      {/* Heat Alert Banner — slides down from top when temp ≥ 45°C */}
+      <HeatAlertBanner
+        alertActive={alertActive}
+        severity={severity}
+        message={message}
+        temp={temp}
+        onDismiss={dismiss}
+      />
+
       {/* Background layer */}
       <SkyBackground />
 
@@ -141,3 +158,4 @@ export default function App() {
     </div>
   );
 }
+
