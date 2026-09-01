@@ -86,16 +86,14 @@ export default function HeatAlertCard({ weather }) {
     <div
       className="glass-card col-span-2 p-4 cursor-default"
       style={{
-        background: config.bgGradient,
-        borderColor: config.borderColor,
         transition: 'all 0.5s ease',
       }}
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <span className="metric-label" style={{ color: config.color, letterSpacing: '1.5px' }}>
+        <h3 className="metric-label flex items-center gap-1.5" style={{ letterSpacing: '1.5px' }}>
           🔔 HEAT ALERT SYSTEM
-        </span>
+        </h3>
         <span
           style={{
             fontSize: '11px',
