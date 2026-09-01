@@ -39,7 +39,7 @@ const INDIAN_CITIES = [
   { name: 'Thiruvananthapuram', lat: 8.5241, lon: 76.9366 },
 ];
 
-// Wind overlay — always blows West to East (like macOS Weather app)
+// Wind overlay — realistic swirly vector field
 function WindCanvas({ windSpeed }) {
   const map = useMap();
   const canvasRef = useRef(null);
@@ -50,40 +50,43 @@ function WindCanvas({ windSpeed }) {
     const ctx = canvas.getContext('2d');
     let animId;
 
-    // 270° = West to East direction (wind blows FROM the west)
-    const angleRad = 0; // 0 radians = moving to the right (east)
-    const speed = Math.max(0.8, windSpeed / 3);
+    const speed = Math.max(0.5, windSpeed / 8);
 
-    const particles = Array.from({ length: 100 }).map(() => ({
+    const particles = Array.from({ length: 450 }).map(() => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       len: Math.random() * 15 + 5,
-      opacity: Math.random() * 0.4 + 0.1,
+      opacity: Math.random() * 0.6 + 0.1,
       sv: Math.random() * 0.5 + 0.5,
     }));
 
     const render = () => {
-      ctx.fillStyle = 'rgba(10, 22, 40, 0.18)';
+      ctx.fillStyle = 'rgba(4, 16, 36, 0.18)'; // Trail effect color matching blue map
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.0;
       ctx.lineCap = 'round';
 
       particles.forEach(p => {
+        // Procedural vector field for swirly wind
+        const nx = p.x / 150;
+        const ny = p.y / 150;
+        const angle = (Math.sin(nx) + Math.cos(ny)) * Math.PI * 0.8;
+
         ctx.beginPath();
-        ctx.strokeStyle = `rgba(100, 200, 255, ${p.opacity})`;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${p.opacity})`;
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + Math.cos(angleRad) * p.len, p.y + Math.sin(angleRad) * p.len);
+        ctx.lineTo(p.x - Math.cos(angle) * p.len * 0.5, p.y - Math.sin(angle) * p.len * 0.5);
         ctx.stroke();
 
-        // Always move right (west to east)
-        p.x += speed * p.sv;
-        // Slight vertical drift for natural feel
-        p.y += (Math.random() - 0.5) * 0.3;
+        // Move particle along the flow
+        p.x += Math.cos(angle) * speed * p.sv;
+        p.y += Math.sin(angle) * speed * p.sv;
 
-        // Wrap around
+        // Wrap around bounds smoothly
         if (p.x > canvas.width + 30) p.x = -30;
-        if (p.y < -30) p.y = canvas.height + 30;
+        else if (p.x < -30) p.x = canvas.width + 30;
         if (p.y > canvas.height + 30) p.y = -30;
+        else if (p.y < -30) p.y = canvas.height + 30;
       });
 
       animId = requestAnimationFrame(render);
