@@ -62,7 +62,11 @@ function WindOverlay({ windSpeed }) {
         // Procedural vector field for swirly wind
         const nx = p.x / 200;
         const ny = p.y / 200;
-        const angle = (Math.sin(nx) + Math.cos(ny)) * Math.PI * 0.8;
+        // Base angle for Northwest flow (approx -3/4 PI or 225 degrees)
+        // Adding perlin noise for swirly effect
+        const baseAngle = Math.PI * 1.25; 
+        const noise = (Math.sin(nx) + Math.cos(ny)) * 0.4;
+        const angle = baseAngle + noise;
 
         ctx.beginPath();
         ctx.strokeStyle = `rgba(255, 255, 255, ${p.opacity})`;
@@ -70,7 +74,7 @@ function WindOverlay({ windSpeed }) {
         ctx.lineTo(p.x - Math.cos(angle) * p.len * 0.5, p.y - Math.sin(angle) * p.len * 0.5);
         ctx.stroke();
 
-        // Move right (West to East) — slow and smooth
+        // Move particle along the flow
         p.x += Math.cos(angle) * speed * p.speedVar;
         p.y += Math.sin(angle) * speed * p.speedVar;
 

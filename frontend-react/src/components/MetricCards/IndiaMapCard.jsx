@@ -70,7 +70,9 @@ function WindCanvas({ windSpeed }) {
         // Procedural vector field for swirly wind
         const nx = p.x / 150;
         const ny = p.y / 150;
-        const angle = (Math.sin(nx) + Math.cos(ny)) * Math.PI * 0.8;
+        const baseAngle = Math.PI * 1.25; 
+        const noise = (Math.sin(nx) + Math.cos(ny)) * 0.4;
+        const angle = baseAngle + noise;
 
         ctx.beginPath();
         ctx.strokeStyle = `rgba(255, 255, 255, ${p.opacity})`;
